@@ -1,0 +1,199 @@
+# =========================
+
+# 🔥 NODE MODULES (ALL SERVICES)
+
+# =========================
+
+node_modules/
+**/node_modules/
+
+# =========================
+
+# 🔥 ENV FILES (IMPORTANT - NEVER PUSH)
+
+# =========================
+
+.env
+.env.*
+**/.env
+**/.env.*
+
+# =========================
+
+# 🔥 LOG FILES
+
+# =========================
+
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================
+
+# 🔥 BUILD / DIST FILES
+
+# =========================
+
+dist/
+build/
+out/
+.next/
+.vite/
+
+# =========================
+
+# 🔥 FRONTEND SPECIFIC
+
+# =========================
+
+coverage/
+.cache/
+*.tsbuildinfo
+
+# =========================
+
+# 🔥 DATABASE FILES
+
+# =========================
+
+*.sqlite
+*.db
+*.mdb
+
+# =========================
+
+# 🔥 OS FILES
+
+# =========================
+
+.DS_Store
+Thumbs.db
+
+# =========================
+
+# 🔥 EDITOR FILES
+
+# =========================
+
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+
+# 🔥 DOCKER
+
+# =========================
+
+docker-compose.override.yml
+*.tar
+
+# =========================
+
+# 🔥 TEST / COVERAGE
+
+# =========================
+
+coverage/
+.nyc_output/
+
+# =========================
+
+# 🔥 TEMP FILES
+
+# =========================
+
+tmp/
+temp/
+*.tmp
+
+# =========================
+
+# 🔥 CACHE
+
+# =========================
+
+.cache/
+.parcel-cache/
+
+# =========================
+
+# 🔥 SECURITY
+
+# =========================
+
+*.pem
+*.key
+*.crt
+
+# =========================
+
+# 🔥 TYPESCRIPT
+
+# =========================
+
+*.tsbuildinfo
+
+# =========================
+
+# 🔥 OPTIONAL (Uploads if any)
+
+# =========================
+
+uploads/
+public/uploads/
+
+# =========================
+
+# 🔥 MICROSERVICES (IGNORE EACH SERVICE BUILD)
+
+# =========================
+
+services/*/node_modules/
+services/*/dist/
+services/*/.env
+
+# =========================
+
+# 🔥 MONOREPO (IF USING)
+
+# =========================
+
+packages/*/node_modules/
+packages/*/dist/
+
+# =========================
+
+# 🔥 DEBUG FILES
+
+# =========================
+
+*.pid
+*.seed
+*.pid.lock
+
+# =========================
+
+# 🔥 REACT / VITE / NEXT
+
+# =========================
+
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# =========================
+
+# 🔥 LOCK FILES (OPTIONAL)
+
+# =========================
+
+# Uncomment if you don't want lock files
+
+# package-lock.json
+
+# yarn.lock
