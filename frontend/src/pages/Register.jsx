@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { FaUser, FaEnvelope, FaLock, FaPhone, FaEye, FaEyeSlash } from 'react-icons/fa'
+import { FaUser, FaEnvelope, FaLock, FaPhone, FaEye, FaEyeSlash, FaBuilding, FaRegBuilding } from 'react-icons/fa'
 import { useAuth } from '../hooks/useAuth'
 
 const Register = () => {
@@ -9,7 +9,10 @@ const Register = () => {
     email: '', 
     password: '', 
     phoneNumber: '', 
-    role: 'user'
+    role: 'user',
+    companyName: '',
+    gstNumber: '',
+    city: ''
   })
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -26,6 +29,29 @@ const Register = () => {
     
     console.log('📝 Submitting registration:', formData)
     
+    // Validate theatre owner specific fields
+    if (formData.role === 'theatre-owner') {
+      if (!formData.companyName) {
+        toast.error('Please enter your theatre/company name')
+        setLoading(false)
+        return
+      }
+      if (!formData.gstNumber) {
+        toast.error('Please enter GST number')
+        setLoading(false)
+        return
+      }
+    }
+    
+    // Validate distributor specific fields
+    if (formData.role === 'distributor') {
+      if (!formData.companyName) {
+        toast.error('Please enter your company name')
+        setLoading(false)
+        return
+      }
+    }
+    
     const res = await register(formData)
     if (res.success) {
       navigate('/')
@@ -39,6 +65,7 @@ const Register = () => {
         <h2 className="text-3xl font-bold text-center text-[#ff4d2e] mb-8">Create Account</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Role Selection */}
           <div>
             <label className="block text-gray-700 mb-2">I am a</label>
             <select 
@@ -53,6 +80,7 @@ const Register = () => {
             </select>
           </div>
 
+          {/* Common Fields */}
           <div>
             <label className="block text-gray-700 mb-2">Full Name</label>
             <div className="relative">
@@ -103,6 +131,64 @@ const Register = () => {
           </div>
 
           <div>
+            <label className="block text-gray-700 mb-2">City</label>
+            <div className="relative">
+              <FaRegBuilding className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input 
+                type="text" 
+                name="city" 
+                value={formData.city} 
+                onChange={handleChange} 
+                className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff4d2e]" 
+                placeholder="Enter your city" 
+              />
+            </div>
+          </div>
+
+          {/* Company Name - for Distributor and Theatre Owner */}
+          {(formData.role === 'distributor' || formData.role === 'theatre-owner') && (
+            <div>
+              <label className="block text-gray-700 mb-2">
+                {formData.role === 'theatre-owner' ? 'Theatre Name' : 'Company Name'}
+              </label>
+              <div className="relative">
+                <FaBuilding className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input 
+                  type="text" 
+                  name="companyName" 
+                  value={formData.companyName} 
+                  onChange={handleChange} 
+                  className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff4d2e]" 
+                  placeholder={formData.role === 'theatre-owner' ? "Enter theatre name" : "Enter company name"}
+                  required={formData.role === 'theatre-owner'}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* GST Number - Only for Theatre Owner */}
+          {formData.role === 'theatre-owner' && (
+            <div>
+              <label className="block text-gray-700 mb-2">GST Number</label>
+              <div className="relative">
+                <FaBuilding className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input 
+                  type="text" 
+                  name="gstNumber" 
+                  value={formData.gstNumber} 
+                  onChange={handleChange} 
+                  className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff4d2e]" 
+                  placeholder="Enter GST number (e.g., 27AAPFU0939F1Z5)"
+                  required
+                  pattern="[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Format: 27AAPFU0939F1Z5 (15 characters)</p>
+            </div>
+          )}
+
+          {/* Password */}
+          <div>
             <label className="block text-gray-700 mb-2">Password</label>
             <div className="relative">
               <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -138,7 +224,7 @@ const Register = () => {
           Already have an account? <Link to="/login" className="text-[#ff4d2e] hover:underline">Login</Link>
         </p>
 
-        {formData.role !== 'user' && (
+        {(formData.role === 'distributor' || formData.role === 'theatre-owner') && (
           <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-xs text-yellow-800 text-center">
               ⚠️ Your account will be reviewed by admin. You'll be notified once approved.
