@@ -2,10 +2,10 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
 /**
- * Generate JWT token
+ * Generate JWT token with role
  */
-const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
+const generateToken = (id, role) => {
+    return jwt.sign({ id, role }, process.env.JWT_SECRET, {
         expiresIn: process.env.JWT_EXPIRE
     });
 };
@@ -18,7 +18,6 @@ const generateToken = (id) => {
 const registerUser = async (req, res) => {
     try {
         console.log('📝 [REGISTER] Request received');
-        console.log('📦 Request body:', JSON.stringify(req.body, null, 2));
         
         const { 
             name, 
@@ -31,69 +30,25 @@ const registerUser = async (req, res) => {
             gstNumber 
         } = req.body;
 
-        // Validate required fields
-        const missingFields = [];
-        if (!name) missingFields.push('name');
-        if (!email) missingFields.push('email');
-        if (!password) missingFields.push('password');
-        if (!phoneNumber) missingFields.push('phoneNumber');
-        
-        if (missingFields.length > 0) {
-            console.log('❌ Missing required fields:', missingFields);
+        // Validation
+        if (!name || !email || !password || !phoneNumber) {
             return res.status(400).json({
                 success: false,
-                message: `Missing required fields: ${missingFields.join(', ')}`
+                message: 'Missing required fields'
             });
         }
 
-        // Validate phone number format
-        if (!/^\d{10}$/.test(phoneNumber.toString())) {
-            console.log('❌ Invalid phone number format:', phoneNumber);
-            return res.status(400).json({
-                success: false,
-                message: 'Phone number must be exactly 10 digits'
-            });
-        }
-
-        // Validate email format
-        const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
-        if (!emailRegex.test(email)) {
-            console.log('❌ Invalid email format:', email);
-            return res.status(400).json({
-                success: false,
-                message: 'Please provide a valid email address'
-            });
-        }
-
-        // Validate password length
-        if (password.length < 6) {
-            console.log('❌ Password too short:', password.length);
-            return res.status(400).json({
-                success: false,
-                message: 'Password must be at least 6 characters long'
-            });
-        }
-
-        // Check if user already exists
+        // Check if user exists
         const userExists = await User.findOne({ email });
         if (userExists) {
-            console.log('❌ User already exists:', email);
             return res.status(400).json({
                 success: false,
-                message: 'User already exists with this email'
+                message: 'User already exists'
             });
         }
 
-        // For distributors and theatre owners, set isVerified to false initially
+        // Set verification status
         const isVerified = role === 'user' ? true : false;
-
-        console.log('✅ Creating user with data:', {
-            name,
-            email,
-            role: role || 'user',
-            phoneNumber,
-            isVerified
-        });
 
         // Create user
         const user = await User.create({
@@ -108,12 +63,9 @@ const registerUser = async (req, res) => {
             isVerified
         });
 
-        console.log('✅ User created successfully:', user._id);
+        // Generate token WITH ROLE
+        const token = generateToken(user._id, user.role);
 
-        // Generate token
-        const token = generateToken(user._id);
-
-        // Return user data
         res.status(201).json({
             success: true,
             message: role === 'user' 
@@ -133,33 +85,10 @@ const registerUser = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Register error:', error);
-        
-        // Handle Mongoose validation errors
-        if (error.name === 'ValidationError') {
-            const errors = Object.values(error.errors).map(err => err.message);
-            console.log('❌ Validation errors:', errors);
-            return res.status(400).json({
-                success: false,
-                message: 'Validation failed',
-                errors: errors
-            });
-        }
-        
-        // Handle duplicate key error
-        if (error.code === 11000) {
-            const field = Object.keys(error.keyPattern)[0];
-            console.log('❌ Duplicate field:', field);
-            return res.status(400).json({
-                success: false,
-                message: `${field} already exists`
-            });
-        }
-        
+        console.error('Register error:', error);
         res.status(500).json({
             success: false,
-            message: 'Server error during registration',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            message: 'Server error'
         });
     }
 };
@@ -191,15 +120,16 @@ const loginUser = async (req, res) => {
             });
         }
         
-        // Check if user is verified (for distributors and theatre owners)
+        // Check verification for non-users
         if (user.role !== 'user' && !user.isVerified) {
             return res.status(403).json({
                 success: false,
-                message: 'Your account is pending admin approval. Please wait for verification.'
+                message: 'Your account is pending admin approval'
             });
         }
         
-        const token = generateToken(user._id);
+        // Generate token WITH ROLE
+        const token = generateToken(user._id, user.role);
         
         res.status(200).json({
             success: true,
@@ -220,8 +150,7 @@ const loginUser = async (req, res) => {
         console.error('Login error:', error);
         res.status(500).json({
             success: false,
-            message: 'Server error during login',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            message: 'Server error'
         });
     }
 };
@@ -234,12 +163,10 @@ const loginUser = async (req, res) => {
 const getMe = async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select('-password');
-        
         res.status(200).json({
             success: true,
             data: user
         });
-
     } catch (error) {
         console.error('Get me error:', error);
         res.status(500).json({
@@ -292,7 +219,60 @@ const updateProfile = async (req, res) => {
         console.error('Update profile error:', error);
         res.status(500).json({
             success: false,
-            message: 'Server error updating profile'
+            message: 'Server error'
+        });
+    }
+};
+
+// ✅ NEW FUNCTION: Update user role
+/**
+ * @desc    Update user role (for admin/theatre owner)
+ * @route   PUT /mraniket404/api/auth/update-role
+ * @access  Private
+ */
+const updateRole = async (req, res) => {
+    try {
+        const { role } = req.body;
+        
+        const validRoles = ['user', 'distributor', 'theatre-owner', 'admin'];
+        if (!validRoles.includes(role)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid role. Valid roles: user, distributor, theatre-owner, admin'
+            });
+        }
+        
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+        
+        user.role = role;
+        user.updatedAt = Date.now();
+        await user.save();
+        
+        // Generate new token with updated role
+        const token = generateToken(user._id, user.role);
+        
+        res.status(200).json({
+            success: true,
+            message: 'Role updated successfully',
+            data: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                token
+            }
+        });
+    } catch (error) {
+        console.error('Update role error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
         });
     }
 };
@@ -301,5 +281,6 @@ module.exports = {
     registerUser,
     loginUser,
     getMe,
-    updateProfile
+    updateProfile,
+    updateRole  // ✅ Export the new function
 };

@@ -8,7 +8,6 @@ const {
 } = require('../controllers/adminController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
-// All admin routes require authentication and admin role
 router.use(protect);
 router.use(admin);
 

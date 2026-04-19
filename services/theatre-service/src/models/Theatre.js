@@ -1,56 +1,71 @@
 const mongoose = require('mongoose');
 
 const seatSchema = new mongoose.Schema({
-    seatId: { type: String, required: true, unique: true },
+    seatId: { type: String, required: true },
     row: { type: String, required: true },
     number: { type: Number, required: true },
-    type: { type: String, enum: ['normal', 'premium', 'recliner', 'vip'], default: 'normal' },
-    price: { type: Number, required: true },
-    isActive: { type: Boolean, default: true },
-    isAccessible: { type: Boolean, default: false },
+    type: { type: String, enum: ['normal', 'premium', 'recliner'], default: 'normal' },
+    price: { type: Number, default: 200 },
+    isBooked: { type: Boolean, default: false },
+    bookedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     position: { x: Number, y: Number }
 });
 
+const screenSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    capacity: { type: Number, required: true },
+    type: { type: String, enum: ['Normal', 'Premium', 'IMAX', '4DX'], default: 'Normal' },
+    seatLayout: {
+        rows: { type: Number, default: 8 },
+        cols: { type: Number, default: 10 },
+        totalSeats: { type: Number, default: 80 },
+        seats: [seatSchema],
+        isConfigured: { type: Boolean, default: false }
+    }
+});
+
 const theatreSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: [true, 'Theatre name is required'],
+        trim: true
+    },
+    address: {
+        type: String,
+        required: [true, 'Address is required'],
+        trim: true
+    },
+    city: {
+        type: String,
+        required: [true, 'City is required'],
+        trim: true
+    },
+    pincode: {
+        type: String,
+        default: ''
+    },
+    phone: {
+        type: String,
+        default: ''
+    },
+    amenities: [{
+        type: String
+    }],
     ownerId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        required: true,
+        index: true
     },
-    name: { type: String, required: true },
-    city: { type: String, required: true, index: true },
-    address: { type: String, required: true },
-    amenities: [String],
-    images: [String],
-    contactNumber: String,
-    email: String,
-    description: String,
-    seatLayout: {
-        rows: Number,
-        columns: Number,
-        seats: [seatSchema],
-        sections: [{ name: String, color: String, seatIds: [String] }],
-        isCustom: { type: Boolean, default: false }
+    isActive: {
+        type: Boolean,
+        default: true
     },
-    totalSeats: { type: Number, default: 0 },
-    screenCount: { type: Number, default: 1 },
-    isActive: { type: Boolean, default: true },
-    isVerified: { type: Boolean, default: false },
-    pricing: {
-        normal: { type: Number, default: 200 },
-        premium: { type: Number, default: 350 },
-        recliner: { type: Number, default: 500 }
-    },
-    createdAt: { type: Date, default: Date.now }
-});
-
-theatreSchema.pre('save', function(next) {
-    if (this.seatLayout && this.seatLayout.seats) {
-        this.totalSeats = this.seatLayout.seats.length;
+    screens: [screenSchema],
+    createdAt: {
+        type: Date,
+        default: Date.now
     }
-    next();
 });
-
-theatreSchema.index({ name: 'text', city: 'text' });
 
 module.exports = mongoose.model('Theatre', theatreSchema);

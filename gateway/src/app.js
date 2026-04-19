@@ -33,7 +33,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use((req, res, next) => {
     console.log(`🌐 [GATEWAY] ${req.method} ${req.url}`);
     if (req.body && Object.keys(req.body).length > 0) {
-        console.log(`📦 Request Body:`, JSON.stringify(req.body, null, 2));
+        const logBody = { ...req.body };
+        if (logBody.password) logBody.password = '***';
+        if (logBody.seatLayout) logBody.seatLayout = '[SEAT DATA]';
+        console.log(`📦 Body:`, logBody);
     }
     next();
 });
@@ -48,7 +51,7 @@ app.get(`${BASE_PATH}/health`, (req, res) => {
     });
 });
 
-// Simple test endpoint
+// Test endpoint
 app.get(`${BASE_PATH}/test`, (req, res) => {
     res.json({ 
         success: true, 
@@ -57,44 +60,35 @@ app.get(`${BASE_PATH}/test`, (req, res) => {
     });
 });
 
-// Auth service test endpoint
-app.get(`${BASE_PATH}/api/auth/test`, async (req, res) => {
-    try {
-        const axios = require('axios');
-        const response = await axios.get('http://localhost:5001/mraniket404/health', {
-            timeout: 5000
-        });
-        res.json({ 
-            success: true, 
-            message: 'Gateway is connected to Auth Service',
-            gateway: {
-                port: process.env.PORT || 5006,
-                basePath: BASE_PATH
-            },
-            authService: response.data 
-        });
-    } catch (error) {
-        res.status(503).json({ 
-            success: false, 
-            message: 'Auth service is not reachable',
-            error: error.message,
-            gateway: {
-                port: process.env.PORT || 5006,
-                basePath: BASE_PATH
-            }
-        });
+// Services status endpoint
+app.get(`${BASE_PATH}/services`, async (req, res) => {
+    const axios = require('axios');
+    const services = {
+        auth: { port: 5001, status: 'unknown', url: 'http://localhost:5001/mraniket404/health' },
+        movies: { port: 5002, status: 'unknown', url: 'http://localhost:5002/mraniket404/health' },
+        shows: { port: 5003, status: 'unknown', url: 'http://localhost:5003/mraniket404/health' },
+        theatre: { port: 5004, status: 'unknown', url: 'http://localhost:5004/mraniket404/health' },
+        bookings: { port: 5005, status: 'unknown', url: 'http://localhost:5005/mraniket404/health' }
+    };
+    
+    for (const [name, service] of Object.entries(services)) {
+        try {
+            const response = await axios.get(service.url, { timeout: 3000 });
+            service.status = response.data.database === 'connected' ? 'healthy' : 'degraded';
+        } catch (error) {
+            service.status = 'unavailable';
+        }
     }
+    
+    res.json({ success: true, gateway: { port: 5006, basePath: BASE_PATH }, services });
 });
 
 // ==================== PROXY CONFIGURATIONS ====================
 
-// Auth Proxy
+// Auth Proxy (Port 5001)
 app.use(`${BASE_PATH}/api/auth`, createProxyMiddleware({
     target: 'http://localhost:5001',
     changeOrigin: true,
-    pathRewrite: {
-        '^/mraniket404/api/auth': '/mraniket404/api/auth'
-    },
     proxyTimeout: 120000,
     timeout: 120000,
     onProxyReq: (proxyReq, req, res) => {
@@ -110,46 +104,72 @@ app.use(`${BASE_PATH}/api/auth`, createProxyMiddleware({
         }
     },
     onProxyRes: (proxyRes, req, res) => {
-        console.log(`🟢 [AUTH PROXY] Response: ${proxyRes.statusCode} for ${req.method} ${req.url}`);
+        console.log(`🟢 [AUTH PROXY] Response: ${proxyRes.statusCode}`);
     },
     onError: (err, req, res) => {
         console.error('🔴 [AUTH PROXY] Error:', err.message);
-        res.status(503).json({ 
-            success: false, 
-            message: 'Auth service is currently unavailable',
-            error: err.message
-        });
+        res.status(503).json({ success: false, message: 'Auth service unavailable' });
     }
 }));
 
-// Movie Proxy
+// Movie Proxy (Port 5002)
 app.use(`${BASE_PATH}/api/movies`, createProxyMiddleware({
     target: 'http://localhost:5002',
     changeOrigin: true,
-    pathRewrite: {
-        '^/mraniket404/api/movies': '/mraniket404/api/movies'
+    proxyTimeout: 60000,
+    timeout: 60000,
+    onProxyReq: (proxyReq, req, res) => {
+        console.log(`🔵 [MOVIE PROXY] ${req.method} ${req.url}`);
+        if (req.headers.authorization) {
+            proxyReq.setHeader('Authorization', req.headers.authorization);
+        }
+        if ((req.method === 'POST' || req.method === 'PUT') && req.body) {
+            const bodyData = JSON.stringify(req.body);
+            proxyReq.setHeader('Content-Type', 'application/json');
+            proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+            proxyReq.write(bodyData);
+        }
+    },
+    onProxyRes: (proxyRes, req, res) => {
+        console.log(`🟢 [MOVIE PROXY] Response: ${proxyRes.statusCode}`);
     },
     onError: (err, req, res) => {
-        console.error('Movie proxy error:', err.message);
+        console.error('🔴 [MOVIE PROXY] Error:', err.message);
         res.status(503).json({ success: false, message: 'Movie service unavailable' });
     }
 }));
 
-// Theatre Proxy with Mock Cities Support
-app.get(`${BASE_PATH}/api/theatre/cities`, (req, res) => {
-    console.log('📍 [THEATRE MOCK] Serving mock cities data');
-    res.json({
-        success: true,
-        data: ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad']
-    });
-});
+// Show Proxy (Port 5003)
+app.use(`${BASE_PATH}/api/shows`, createProxyMiddleware({
+    target: 'http://localhost:5003',
+    changeOrigin: true,
+    proxyTimeout: 120000,
+    timeout: 120000,
+    onProxyReq: (proxyReq, req, res) => {
+        console.log(`🔵 [SHOW PROXY] ${req.method} ${req.url}`);
+        if (req.headers.authorization) {
+            proxyReq.setHeader('Authorization', req.headers.authorization);
+        }
+        if ((req.method === 'POST' || req.method === 'PUT') && req.body) {
+            const bodyData = JSON.stringify(req.body);
+            proxyReq.setHeader('Content-Type', 'application/json');
+            proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+            proxyReq.write(bodyData);
+        }
+    },
+    onProxyRes: (proxyRes, req, res) => {
+        console.log(`🟢 [SHOW PROXY] Response: ${proxyRes.statusCode}`);
+    },
+    onError: (err, req, res) => {
+        console.error('🔴 [SHOW PROXY] Error:', err.message);
+        res.status(503).json({ success: false, message: 'Show service unavailable' });
+    }
+}));
 
+// Theatre Proxy (Port 5004)
 app.use(`${BASE_PATH}/api/theatre`, createProxyMiddleware({
     target: 'http://localhost:5004',
     changeOrigin: true,
-    pathRewrite: {
-        '^/mraniket404/api/theatre': '/mraniket404/api/theatre'
-    },
     proxyTimeout: 60000,
     timeout: 60000,
     onProxyReq: (proxyReq, req, res) => {
@@ -157,49 +177,45 @@ app.use(`${BASE_PATH}/api/theatre`, createProxyMiddleware({
         if (req.headers.authorization) {
             proxyReq.setHeader('Authorization', req.headers.authorization);
         }
+        if ((req.method === 'POST' || req.method === 'PUT') && req.body) {
+            const bodyData = JSON.stringify(req.body);
+            proxyReq.setHeader('Content-Type', 'application/json');
+            proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+            proxyReq.write(bodyData);
+        }
     },
     onProxyRes: (proxyRes, req, res) => {
-        console.log(`🟢 [THEATRE PROXY] Response: ${proxyRes.statusCode} for ${req.method} ${req.url}`);
+        console.log(`🟢 [THEATRE PROXY] Response: ${proxyRes.statusCode}`);
     },
     onError: (err, req, res) => {
         console.error('🔴 [THEATRE PROXY] Error:', err.message);
-        if (req.url.includes('/cities')) {
-            console.log('📍 [THEATRE MOCK] Falling back to mock cities data');
-            return res.status(200).json({
-                success: true,
-                data: ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad']
-            });
-        }
-        res.status(503).json({ 
-            success: false, 
-            message: 'Theatre service is currently unavailable',
-            error: err.message
-        });
+        res.status(503).json({ success: false, message: 'Theatre service unavailable' });
     }
 }));
 
-// Show Proxy
-app.use(`${BASE_PATH}/api/shows`, createProxyMiddleware({
-    target: 'http://localhost:5003',
-    changeOrigin: true,
-    pathRewrite: {
-        '^/mraniket404/api/shows': '/mraniket404/api/shows'
-    },
-    onError: (err, req, res) => {
-        console.error('Show proxy error:', err.message);
-        res.status(503).json({ success: false, message: 'Show service unavailable' });
-    }
-}));
-
-// Booking Proxy
+// Booking Proxy (Port 5005)
 app.use(`${BASE_PATH}/api/bookings`, createProxyMiddleware({
     target: 'http://localhost:5005',
     changeOrigin: true,
-    pathRewrite: {
-        '^/mraniket404/api/bookings': '/mraniket404/api/bookings'
+    proxyTimeout: 60000,
+    timeout: 60000,
+    onProxyReq: (proxyReq, req, res) => {
+        console.log(`🔵 [BOOKING PROXY] ${req.method} ${req.url}`);
+        if (req.headers.authorization) {
+            proxyReq.setHeader('Authorization', req.headers.authorization);
+        }
+        if ((req.method === 'POST' || req.method === 'PUT') && req.body) {
+            const bodyData = JSON.stringify(req.body);
+            proxyReq.setHeader('Content-Type', 'application/json');
+            proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+            proxyReq.write(bodyData);
+        }
+    },
+    onProxyRes: (proxyRes, req, res) => {
+        console.log(`🟢 [BOOKING PROXY] Response: ${proxyRes.statusCode}`);
     },
     onError: (err, req, res) => {
-        console.error('Booking proxy error:', err.message);
+        console.error('🔴 [BOOKING PROXY] Error:', err.message);
         res.status(503).json({ success: false, message: 'Booking service unavailable' });
     }
 }));
@@ -207,29 +223,13 @@ app.use(`${BASE_PATH}/api/bookings`, createProxyMiddleware({
 // 404 handler
 app.use((req, res) => {
     console.log(`❌ 404 Not Found: ${req.method} ${req.url}`);
-    res.status(404).json({ 
-        success: false, 
-        message: `Route not found: ${req.url}`,
-        availableEndpoints: [
-            `GET ${BASE_PATH}/health`,
-            `GET ${BASE_PATH}/test`,
-            `GET ${BASE_PATH}/api/auth/test`,
-            `POST ${BASE_PATH}/api/auth/register`,
-            `POST ${BASE_PATH}/api/auth/login`,
-            `GET ${BASE_PATH}/api/auth/me`,
-            `GET ${BASE_PATH}/api/theatre/cities`
-        ]
-    });
+    res.status(404).json({ success: false, message: `Route not found: ${req.url}` });
 });
 
 // Global error handler
 app.use((err, req, res, next) => {
     console.error('❌ Gateway error:', err);
-    res.status(500).json({ 
-        success: false, 
-        message: 'Internal gateway error',
-        error: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
+    res.status(500).json({ success: false, message: 'Internal gateway error' });
 });
 
 module.exports = app;

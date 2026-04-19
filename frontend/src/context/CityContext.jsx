@@ -1,10 +1,8 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import theatreService from '../services/theatreService';
 
-// Create the context
 export const CityContext = createContext();
 
-// Custom hook to use the city context
 export const useCity = () => {
     const context = useContext(CityContext);
     if (!context) {
@@ -13,11 +11,10 @@ export const useCity = () => {
     return context;
 };
 
-// Provider component
 export const CityProvider = ({ children }) => {
     const [cities, setCities] = useState([]);
     const [selectedCity, setSelectedCity] = useState(() => {
-        return localStorage.getItem('selectedCity') || 'Mumbai';
+        return localStorage.getItem('selectedCity') || '';
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -26,35 +23,23 @@ export const CityProvider = ({ children }) => {
         try {
             setLoading(true);
             setError(null);
-            console.log('📍 Loading cities...');
             
             const response = await theatreService.getCities();
-            console.log('📍 Cities response:', response);
             
-            if (response.success && response.data) {
+            if (response.success && response.data && response.data.length > 0) {
                 setCities(response.data);
-                // If selected city is not in the list, default to first city
-                if (selectedCity && !response.data.includes(selectedCity) && response.data.length > 0) {
+                if (!selectedCity && response.data.length > 0) {
                     setSelectedCity(response.data[0]);
                     localStorage.setItem('selectedCity', response.data[0]);
                 }
             } else {
-                // Fallback cities if API fails
-                const fallbackCities = ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad'];
-                setCities(fallbackCities);
-                if (!selectedCity) {
-                    setSelectedCity(fallbackCities[0]);
-                }
+                setError('No cities found');
+                setCities([]);
             }
         } catch (err) {
             console.error('Failed to load cities:', err);
-            setError('Failed to load cities. Using default cities.');
-            // Fallback cities
-            const fallbackCities = ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad'];
-            setCities(fallbackCities);
-            if (!selectedCity) {
-                setSelectedCity(fallbackCities[0]);
-            }
+            setError(err.response?.data?.message || 'Failed to load cities');
+            setCities([]);
         } finally {
             setLoading(false);
         }

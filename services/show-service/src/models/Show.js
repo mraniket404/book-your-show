@@ -1,60 +1,70 @@
 const mongoose = require('mongoose');
 
+// ✅ Define Movie schema reference (or import if exists)
+// Since Movie model is in different service, we just use ref string
+
 const showSchema = new mongoose.Schema({
     movieId: {
-        type: String,
-        required: true,
-        index: true
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Movie',  // ✅ This should match the model name in movie-service
+        required: true
     },
     theatreId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Theatre',
-        required: true,
-        index: true
+        required: true
+    },
+    screenId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Screen',
+        required: true
     },
     date: {
         type: Date,
-        required: true,
-        index: true
+        required: true
     },
     time: {
         type: String,
-        required: true,
-        enum: ['09:00', '12:00', '15:00', '18:00', '21:00', '00:00']
-    },
-    language: {
-        type: String,
         required: true
+    },
+    prices: {
+        normal: { type: Number, default: 180 },
+        premium: { type: Number, default: 320 },
+        recliner: { type: Number, default: 550 },
+        sofa: { type: Number, default: 450 },
+        wheelchair: { type: Number, default: 180 }
     },
     format: {
         type: String,
-        enum: ['2D', '3D', 'IMAX 2D', 'IMAX 3D', '4DX'],
+        enum: ['2D', '3D', 'IMAX', '4DX'],
         default: '2D'
-    },
-    priceMap: {
-        normal: { type: Number, default: 200 },
-        premium: { type: Number, default: 350 },
-        recliner: { type: Number, default: 500 }
     },
     availableSeats: {
         type: Number,
-        required: true
+        default: 100
+    },
+    totalSeats: {
+        type: Number,
+        default: 100
     },
     bookedSeats: [{
-        type: String,
-        default: []
+        seatNumber: String,
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        bookingTime: { type: Date, default: Date.now }
     }],
     status: {
         type: String,
         enum: ['active', 'cancelled', 'completed'],
         default: 'active'
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
     }
+}, {
+    timestamps: true
 });
 
-showSchema.index({ movieId: 1, theatreId: 1, date: 1, time: 1 }, { unique: true });
+// Create indexes for faster queries
+showSchema.index({ screenId: 1, date: 1, time: 1 });
+showSchema.index({ theatreId: 1 });
+showSchema.index({ movieId: 1 });
+showSchema.index({ date: 1 });
 
 module.exports = mongoose.model('Show', showSchema);

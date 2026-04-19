@@ -8,7 +8,7 @@ import toast from 'react-hot-toast'
 const BookingConfirmation = () => {
   const { bookingId } = useParams()
   const navigate = useNavigate()
-  const [booking, setBooking] = useState(null)
+  const [booking, setBooking] = useState(null) 
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

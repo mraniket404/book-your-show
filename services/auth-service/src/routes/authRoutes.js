@@ -1,24 +1,21 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/authMiddleware');
 const {
     registerUser,
     loginUser,
     getMe,
-    updateProfile
+    updateProfile,
+    updateRole  // ✅ Import updateRole
 } = require('../controllers/authController');
-const { protect } = require('../middleware/authMiddleware');
-const {
-    validateRegister,
-    validateLogin,
-    checkValidation
-} = require('../utils/validation');
 
 // Public routes
-router.post('/register', validateRegister, checkValidation, registerUser);
-router.post('/login', validateLogin, checkValidation, loginUser);
+router.post('/register', registerUser);
+router.post('/login', loginUser);
 
 // Protected routes
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
+router.put('/update-role', protect, updateRole);  // ✅ Add this route
 
 module.exports = router;

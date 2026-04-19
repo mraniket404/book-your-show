@@ -3,72 +3,50 @@ const mongoose = require('mongoose');
 const movieSchema = new mongoose.Schema({
     title: {
         type: String,
-        required: [true, 'Movie title is required'],
+        required: true,
         trim: true
     },
     description: {
         type: String,
-        required: true
+        required: true,
+        trim: true
     },
     duration: {
         type: Number,
-        required: true
+        required: true,
+        min: 30,
+        max: 300
     },
     language: {
         type: String,
         required: true,
-        enum: ['Hindi', 'English', 'Tamil', 'Telugu', 'Malayalam', 'Kannada', 'Bhojpuri', 'Marathi', 'Bengali']
+        trim: true
     },
-    genre: [{
-        type: String,
-        enum: ['Action', 'Comedy', 'Drama', 'Horror', 'Romance', 'Thriller', 'Sci-Fi', 'Fantasy', 'Animation', 'Documentary']
-    }],
-    releaseDate: {
-        type: Date,
+    genre: {
+        type: [String],
         required: true
     },
-    endDate: {
+    releaseDate: {
         type: Date,
         required: true
     },
     poster: {
         type: String,
-        default: ''
+        default: 'https://via.placeholder.com/300x450?text=No+Poster'
     },
     trailer: {
         type: String,
         default: ''
     },
-    rating: {
-        type: Number,
-        default: 0
+    status: {
+        type: String,
+        enum: ['upcoming', 'now-showing'],
+        default: 'upcoming'
     },
-    cast: [{
-        name: String,
-        role: String,
-        image: String
-    }],
-    crew: [{
-        name: String,
-        role: String
-    }],
     distributorId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
-    },
-    approvedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
-    },
-    status: {
-        type: String,
-        enum: ['pending', 'approved', 'rejected', 'upcoming', 'now-showing', 'ended'],
-        default: 'pending'
-    },
-    rejectionReason: {
-        type: String,
-        default: ''
     },
     isActive: {
         type: Boolean,
@@ -77,28 +55,7 @@ const movieSchema = new mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now
-    },
-    updatedAt: {
-        type: Date,
-        default: Date.now
     }
-});
-
-movieSchema.index({ title: 'text', description: 'text' });
-
-movieSchema.pre('save', function(next) {
-    this.updatedAt = Date.now();
-    const now = new Date();
-    if (this.status === 'approved') {
-        if (now < this.releaseDate) {
-            this.status = 'upcoming';
-        } else if (now >= this.releaseDate && now <= this.endDate) {
-            this.status = 'now-showing';
-        } else {
-            this.status = 'ended';
-        }
-    }
-    next();
 });
 
 module.exports = mongoose.model('Movie', movieSchema);

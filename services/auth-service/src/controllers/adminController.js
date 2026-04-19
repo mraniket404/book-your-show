@@ -1,10 +1,5 @@
 const User = require('../models/User');
 
-/**
- * @desc    Get all pending users (distributors, theatre owners)
- * @route   GET /mraniket404/api/admin/pending-users
- * @access  Private (Admin only)
- */
 const getPendingUsers = async (req, res) => {
     try {
         const users = await User.find({
@@ -26,15 +21,21 @@ const getPendingUsers = async (req, res) => {
     }
 };
 
-/**
- * @desc    Approve or reject user
- * @route   PUT /mraniket404/api/admin/approve-user/:id
- * @access  Private (Admin only)
- */
 const approveUser = async (req, res) => {
     try {
+        console.log('📝 [APPROVE] Request received');
+        console.log('📦 Params:', req.params);
+        console.log('📦 Body:', req.body);
+        
         const { id } = req.params;
-        const { isVerified, rejectionReason } = req.body;
+        const { isVerified } = req.body;
+        
+        if (typeof isVerified !== 'boolean') {
+            return res.status(400).json({
+                success: false,
+                message: 'isVerified must be a boolean value'
+            });
+        }
         
         const user = await User.findById(id);
         
@@ -75,11 +76,6 @@ const approveUser = async (req, res) => {
     }
 };
 
-/**
- * @desc    Get all users by role
- * @route   GET /mraniket404/api/admin/users
- * @access  Private (Admin only)
- */
 const getUsersByRole = async (req, res) => {
     try {
         const { role } = req.query;
@@ -107,11 +103,6 @@ const getUsersByRole = async (req, res) => {
     }
 };
 
-/**
- * @desc    Get user statistics
- * @route   GET /mraniket404/api/admin/stats
- * @access  Private (Admin only)
- */
 const getUserStats = async (req, res) => {
     try {
         const stats = await User.aggregate([

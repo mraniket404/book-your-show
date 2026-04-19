@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-const axios = require('axios');
 
 const protect = async (req, res, next) => {
     let token;
@@ -7,35 +6,45 @@ const protect = async (req, res, next) => {
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
         try {
             token = req.headers.authorization.split(' ')[1];
+            console.log('🔐 [MOVIE] Verifying token...');
+            
+            // Verify JWT and decode
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            console.log('🔐 [MOVIE] Decoded token:', decoded);
             
-            // Verify user with auth service
-            const response = await axios.get(`${process.env.AUTH_SERVICE_URL}/mraniket404/api/auth/me`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            // Set user from decoded token
+            req.user = {
+                id: decoded.id,
+                role: decoded.role || 'user'
+            };
             
-            req.user = response.data.data;
+            console.log('✅ [MOVIE] User authenticated:', req.user);
             next();
+            
         } catch (error) {
+            console.error('❌ [MOVIE] Auth error:', error.message);
             return res.status(401).json({
                 success: false,
                 message: 'Not authorized'
             });
         }
-    }
-
-    if (!token) {
+    } else {
+        console.error('❌ [MOVIE] No token provided');
         return res.status(401).json({
             success: false,
-            message: 'Not authorized, no token'
+            message: 'Not authorized, no token provided'
         });
     }
 };
 
-const distributor = async (req, res, next) => {
+const distributor = (req, res, next) => {
+    console.log('🔐 [MOVIE] Checking role. User role:', req.user?.role);
+    
     if (req.user && (req.user.role === 'distributor' || req.user.role === 'admin')) {
+        console.log('✅ [MOVIE] Distributor access granted');
         next();
     } else {
+        console.log('❌ [MOVIE] Distributor access denied. Role:', req.user?.role);
         return res.status(403).json({
             success: false,
             message: 'Access denied. Distributor only.'
@@ -43,15 +52,4 @@ const distributor = async (req, res, next) => {
     }
 };
 
-const admin = async (req, res, next) => {
-    if (req.user && req.user.role === 'admin') {
-        next();
-    } else {
-        return res.status(403).json({
-            success: false,
-            message: 'Access denied. Admin only.'
-        });
-    }
-};
-
-module.exports = { protect, distributor, admin };
+module.exports = { protect, distributor };

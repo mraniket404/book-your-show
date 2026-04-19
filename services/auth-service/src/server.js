@@ -12,7 +12,7 @@ const server = app.listen(PORT, () => {
     console.log('🔐 AUTH SERVICE STARTED');
     console.log('=================================');
     console.log(`📡 Port: ${PORT}`);
-    console.log(`🔗 Health: http://localhost:${PORT}${BASE_PATH}/health`);
+    console.log(`🔗 Health: http://localhost:${PORT}${BASE_PATH}/health`); 
     console.log(`⏱️  Server Timeout: 120 seconds`);
     console.log('=================================\n');
 });

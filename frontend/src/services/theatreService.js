@@ -1,44 +1,70 @@
 import api from './api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5006/mraniket404/api';
-
 const theatreService = {
     // Get all cities
     getCities: async () => {
-        try {
-            console.log('📍 Fetching cities from:', `${API_URL}/theatre/cities`);
-            const response = await api.get('/theatre/cities');
-            return response.data;
-        } catch (error) {
-            console.error('Error fetching cities:', error);
-            // Return mock data if service is not available
-            return {
-                success: true,
-                data: ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad']
-            };
-        }
+        const response = await api.get('/theatre/cities');
+        return response;
     },
 
-    // Get theatres by city
-    getTheatresByCity: async (city) => {
-        try {
-            const response = await api.get(`/theatre/city/${city}`);
-            return response.data;
-        } catch (error) {
-            console.error('Error fetching theatres:', error);
-            return { success: false, data: [] };
-        }
+    // Create theatre
+    createTheatre: async (data) => {
+        const response = await api.post('/theatre', data);
+        return response;
     },
 
-    // Get theatre by ID
-    getTheatreById: async (id) => {
-        try {
-            const response = await api.get(`/theatre/${id}`);
-            return response.data;
-        } catch (error) {
-            console.error('Error fetching theatre:', error);
-            throw error;
-        }
+    // Get my theatre
+    getMyTheatre: async () => {
+        const response = await api.get('/theatre/my-theatre');
+        return response;
+    },
+
+    // Update theatre
+    updateTheatre: async (data) => {
+        const response = await api.put('/theatre', data);
+        return response;
+    },
+
+    // Delete theatre
+    deleteTheatre: async () => {
+        const response = await api.delete('/theatre');
+        return response;
+    },
+
+    // ✅ FIXED: Add screen (no theatreId parameter)
+    addScreen: async (screenData) => {
+        const response = await api.post('/theatre/screens', screenData);
+        return response;
+    },
+
+    // Get screens
+    getScreens: async () => {
+        const response = await api.get('/theatre/screens');
+        return response;
+    },
+
+    // Update screen
+    updateScreen: async (screenId, data) => {
+        const response = await api.put(`/theatre/screens/${screenId}`, data);
+        return response;
+    },
+
+    // Delete screen
+    deleteScreen: async (screenId) => {
+        const response = await api.delete(`/theatre/screens/${screenId}`);
+        return response;
+    },
+
+    // Save seat layout
+    saveSeatLayout: async (screenId, layoutData) => {
+        const response = await api.post(`/theatre/screens/${screenId}/layout`, layoutData);
+        return response;
+    },
+
+    // Get seat layout
+    getSeatLayout: async (screenId) => {
+        const response = await api.get(`/theatre/screens/${screenId}/layout`);
+        return response;
     }
 };
 
